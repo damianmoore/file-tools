@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+import os
+from subprocess import Popen, PIPE, STDOUT
+import sys
+
+
+def run_cmd(cmd):
+    p = Popen(cmd.split(' '), stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    return p.communicate()[0]
+
+def check_dir_contains_files(orig, dest, strict=False):
+    orig_abs = os.path.abspath(orig)
+    dest_abs = os.path.abspath(dest)
+
+    for r,d,f in os.walk(orig):
+        for fn in f:
+            path = os.path.join(r, fn)
+            stats = os.stat(path)
+            bytes = stats.st_size
+            if strict:
+                checksum = run_cmd('md5sum %s' % path).strip().split()[0]
+            
+            found = False
+            find_str = run_cmd('find %s -name %s' % (dest_abs, fn))
+            if find_str:
+                for found_file in find_str.split():
+                    found_stats = os.stat(found_file)
+                    found_bytes = found_stats.st_size
+                    if strict:
+                        found_checksum = run_cmd('md5sum %s' % found_file).strip().split()[0]
+                    if strict:
+                        if found_bytes == bytes and found_checksum == checksum:
+                            found = True
+                            break
+                    else:
+                        if found_bytes == bytes:
+                            found = True
+                            break
+            if not found:
+                if strict:
+                    print '%s (%d bytes md5sum:%s) missing' % (fn, bytes, checksum)
+                else:
+                    print '%s (%d bytes) missing' % (fn, bytes)
+
+
+if __name__ == '__main__':
+    orig_dir = os.path.abspath(sys.argv[1])
+    dest_dir = os.path.abspath(sys.argv[2])
+    check_dir_contains_files(orig_dir, dest_dir, strict=True)
+    
