@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+import os
+from subprocess import Popen, PIPE, STDOUT
+import sys
+
+
+def run_cmd(cmd):
+    p = Popen(cmd.split(' '), stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    return p.communicate()[0]
+
+IMAGE_EXTENSIONS = ['jpg', 'jpeg',]
+
+def check_valid_images(orig):
+    orig_abs = os.path.abspath(orig)
+
+    for r,d,f in os.walk(orig):
+        for fn in f:
+            ext = os.path.splitext(fn)[1][1:]
+            if ext.lower() in IMAGE_EXTENSIONS:
+                path = os.path.join(r, fn)
+                cmd = 'identify -format \'%%m\' %s' % path
+                if not 'JPEG' in run_cmd(cmd):
+                    print '%s - BAD' % path
+
+if __name__ == '__main__':
+    orig_dir = os.path.abspath(sys.argv[1])
+    check_valid_images(orig_dir)
+    
