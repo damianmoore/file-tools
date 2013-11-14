@@ -15,8 +15,11 @@ def run_cmd(cmd):
 
 def get_time(path):
     cmd = 'exiftool -dateTimeOriginal %s' % path
-    date_str = run_cmd(cmd).split(' : ')[1].strip()
-    return time.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+    try:
+        date_str = run_cmd(cmd).split(' : ')[1].strip()
+        return time.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+    except IndexError:
+        return None
 
 def mkdir_p(path):
     try:
@@ -32,20 +35,23 @@ def organise_photos(orig, dest, move=False):
             if os.path.splitext(fn)[1][1:].lower() in PHOTO_FILE_EXTS:
                 filepath = os.path.join(r, fn)
                 t = get_time(filepath)
-                destpath = '%02d/%02d/%02d' % (t.tm_year, t.tm_mon, t.tm_mday)
-                destpath = os.path.join(dest, destpath)
-                mkdir_p(destpath)
-                destpath = os.path.join(destpath, fn)
-                if not os.path.exists(destpath):
-                    if move:
-                        shutil.move(filepath, destpath)
-                    else:
-                        shutil.copyfile(filepath, destpath)
-                print filepath, destpath
+                if t:
+                    destpath = '%02d/%02d/%02d' % (t.tm_year, t.tm_mon, t.tm_mday)
+                    destpath = os.path.join(dest, destpath)
+                    mkdir_p(destpath)
+                    destpath = os.path.join(destpath, fn)
+                    if not os.path.exists(destpath):
+                        if move:
+                            shutil.move(filepath, destpath)
+                        else:
+                            shutil.copyfile(filepath, destpath)
+                    print '{} -> {}'.format(filepath, destpath)
+                else:
+                    print 'ERROR READING DATE: {}'.format(filepath)
 
 
 if __name__ == '__main__':
     orig_dir = os.path.abspath(sys.argv[1])
     dest_dir = os.path.abspath(sys.argv[2])
-    organise_photos(orig_dir, dest_dir, move=False)
+    organise_photos(orig_dir, dest_dir, move=True)
     
