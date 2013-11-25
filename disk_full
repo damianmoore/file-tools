@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+
+import smtplib
+from subprocess import Popen, PIPE
+import re
+
+
+def main():
+    threshold_percent = 99
+    full = False
+    exception = None
+
+    try:
+        output = Popen(['df', '-lh',], stdout=PIPE).communicate()[0]
+
+        for match in re.findall(r'\W([0-9]+)%', output):
+            if int(match) >= threshold_percent:
+                full = True
+                subject = 'SYSTEM WARNING: Disk almost full'
+    except:
+        exception = True
+        subject = 'Exception in disk_full script'
+        import traceback
+        output = traceback.format_exc()
+        
+
+    if full or exception:
+        HOST = 'localhost'
+        TO = "errors@example.com"
+        FROM = "root@localhost"
+        BODY = '\r\n'.join((
+                "From: %s" % FROM,
+                "To: %s" % TO,
+                "Subject: %s" % subject,
+                "",
+                output
+                ))
+        server = smtplib.SMTP(HOST)
+        server.sendmail(FROM, [TO], BODY)
+        server.quit()
+
+
+if __name__ == '__main__':
+    main()
