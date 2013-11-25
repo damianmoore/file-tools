@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+from datetime import datetime
+from subprocess import Popen, PIPE
+
+
+def run_cmd(cmd):
+    p = Popen(cmd.split(' '), stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    return p.communicate()[0]
+
+
+def main():
+    now = datetime.now()
+    date_str = '%4d%02d%02d' % (now.year, now.month, now.day)
+    path = '/var/log/du_log/%s.log' % date_str
+
+    output = run_cmd('du --max-depth=3 --exclude=dev --exclude=media --exclude=mnt --exclude=proc --exclude=run --exclude=sys /')
+
+    with open(path, 'w') as log_file:
+        log_file.write(output)
+
+    run_cmd('gzip -f %s' % path)
+
+
+if __name__ == '__main__':
+    main()
