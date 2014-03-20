@@ -4,19 +4,21 @@ import os
 from subprocess import Popen, PIPE, STDOUT
 import sys
 
-from utils import get_console_width, format_output
+from utils import get_console_width, format_output, run_cmd, FileHashCache, determine_same_file
 
 
-def run_cmd(cmd):
-    p = Popen(cmd.split(' '), stdout=PIPE, stdin=PIPE, stderr=PIPE)
-    return p.communicate()[0]
-
-def check_dir_contains_files(orig, dest, strict=False, verbose=True):
+def check_dir_contains_files(orig, dest, strict=False, verbose=True, start_at=None):
     orig_abs = os.path.abspath(orig)
     dest_abs = os.path.abspath(dest)
     total_bytes = int(run_cmd('du --max-depth=0 %s' % orig_abs).split()[0]) * 1024
     collected_bytes = 0
     columns = get_console_width()
+
+    files_checked = 0
+    files_missing = 0
+
+    fhc = FileHashCache()
+
     print()
 
     for r,d,f in os.walk(orig):
@@ -28,20 +30,19 @@ def check_dir_contains_files(orig, dest, strict=False, verbose=True):
             stats = os.stat(path)
             bytes = stats.st_size
             collected_bytes += bytes
+            percent_complete = (float(collected_bytes)/total_bytes)*100
 
-            if strict:
-                checksum = run_cmd('md5sum %s' % path).strip().split()[0]
-            
+            if start_at and start_at > percent_complete:
+                continue
+
             found = False
-            find_str = run_cmd('find %s -name %s' % (dest_abs, fn))
+            find_str = run_cmd('find "%s" -name "%s"' % (dest_abs, '*'.join(os.path.splitext(fn))))
             if find_str:
-                for found_file in find_str.split():
+                for found_file in find_str.splitlines():
                     found_stats = os.stat(found_file)
                     found_bytes = found_stats.st_size
                     if strict:
-                        found_checksum = run_cmd('md5sum %s' % found_file).strip().split()[0]
-                    if strict:
-                        if found_bytes == bytes and found_checksum == checksum:
+                        if determine_same_file(path, found_file, fhc):
                             found = True
                             break
                     else:
@@ -49,22 +50,30 @@ def check_dir_contains_files(orig, dest, strict=False, verbose=True):
                             found = True
                             break
 
+
             if verbose:
                 print('\b' * columns, end='')
 
+            files_checked += 1
             if not found:
-                if strict:
-                    print('%s (%d bytes md5sum:%s) missing' % (fn, bytes, checksum))
-                else:
-                    print('%s (%d bytes) missing' % (fn, bytes))
+                files_missing += 1
+                msg = '%s (%d bytes) missing' % (path, bytes)
+                print(format_output(msg, columns), end='')
 
             if verbose:
-                msg = '%.1f%%  %s' % ((float(collected_bytes)/total_bytes)*100, path)
+                msg = '%.1f%%    %s' % (percent_complete, path)
                 print(format_output(msg, columns), end='')
+
+    print('\n')
+    print('{} files checked'.format(files_checked))
+    print('{} files missing'.format(files_missing))
 
 
 if __name__ == '__main__':
     orig_dir = os.path.abspath(sys.argv[1])
     dest_dir = os.path.abspath(sys.argv[2])
-    check_dir_contains_files(orig_dir, dest_dir, strict=True, verbose=True)
-    
+    start_at = None
+    if len(sys.argv) >= 4:
+        start_at = float(sys.argv[3])
+    check_dir_contains_files(orig_dir, dest_dir, strict=True, verbose=True, start_at=start_at)
+
