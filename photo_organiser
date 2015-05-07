@@ -11,7 +11,16 @@ import photo_organiser_conf as settings
 from utils import run_cmd, determine_same_file
 
 
+SYSTEM_DEPENDENCIES = ['exiftool',]
 PHOTO_FILE_EXTS = ['cr2', 'jpeg', 'jpg',]
+
+
+def missing_dependencies():
+    missing = []
+    for dependency in SYSTEM_DEPENDENCIES:
+        if not len(run_cmd('which %s' % dependency)):
+            missing.append(dependency)
+    return missing
 
 
 def get_time(path):
@@ -76,9 +85,10 @@ def find_new_file_name(path):
 def organise_photos(orig, move=False):
     imported = 0
     were_duplicates = 0
+    were_bad = 0
 
     for r,d,f in os.walk(orig):
-        for fn in f:
+        for fn in sorted(f):
             filepath = os.path.join(r, fn)
             dest = determine_destination(filepath)
             if not dest:
@@ -86,6 +96,7 @@ def organise_photos(orig, move=False):
                 pass
             elif os.path.getsize(filepath) < 102400:
                 print 'FILE VERY SMALL (<100k - PROBABLY THUMBNAIL), NOT IMPORTING {}'.format(filepath)
+                were_bad += 1
             else:
                 t = get_time(filepath)
                 if t:
@@ -110,7 +121,7 @@ def organise_photos(orig, move=False):
                         if same:
                             os.remove(filepath)
                             were_duplicates += 1
-                            print 'PHOTO ALREADY IMPORTED, DELETED'
+                            print 'PHOTO ALREADY IMPORTED, DELETED FROM SOURCE'
                         else:
                             print 'NEED TO IMPORT UNDER DIFFERENT NAME'
                             destpath = find_new_file_name(destpath)
@@ -120,11 +131,16 @@ def organise_photos(orig, move=False):
 
                 else:
                     print 'ERROR READING DATE: {}'.format(filepath)
+                    were_bad += 1
 
     if imported or were_duplicates:
-        print '\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n'.format(imported, were_duplicates)
+        print '\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n{} WERE BAD'.format(imported, were_duplicates, were_bad)
 
 
 if __name__ == '__main__':
+    missing_dependencies = missing_dependencies()
+    if missing_dependencies:
+        print 'Missing dependencies: {}'.format(', '.join(missing_dependencies))
+        exit(1)
     for path in get_input_paths():
         organise_photos(path, move=True)
