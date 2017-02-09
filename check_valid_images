@@ -2,27 +2,50 @@
 import os
 from subprocess import Popen, PIPE, STDOUT
 import sys
+import traceback
+
+from PIL import Image
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, output='value'):
     p = Popen(cmd.split(' '), stdout=PIPE, stdin=PIPE, stderr=PIPE)
-    return p.communicate()[0]
+    if output == 'value':
+        return p.communicate()[0]
+    elif output == 'returncode':
+        p.communicate()
+        return p.returncode
 
-IMAGE_EXTENSIONS = ['jpg', 'jpeg',]
+
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'cr2']
+
 
 def check_valid_images(orig):
     orig_abs = os.path.abspath(orig)
+    checked_images = 0
+    bad_images = 0
 
     for r,d,f in os.walk(orig):
         for fn in f:
-            ext = os.path.splitext(fn)[1][1:]
-            if ext.lower() in IMAGE_EXTENSIONS:
+            ext = os.path.splitext(fn)[1][1:].lower()
+            if ext in IMAGE_EXTENSIONS:
                 path = os.path.join(r, fn)
-                cmd = 'identify -format \'%%m\' %s' % path
-                if not 'JPEG' in run_cmd(cmd):
-                    print '%s - BAD' % path
+                try:
+                    checked_images += 1
+                    if ext == 'cr2':
+                        cmd = 'dcraw -c {}'.format(path)
+                        if run_cmd(cmd, output='returncode') == 1:
+                            bad_images += 1
+                            print('BAD IMAGE:  {}'.format(path))
+                    else:
+                        Image.open(path)
+                except:
+                    bad_images += 1
+                    print('BAD IMAGE:  {}'.format(path))
+
+    print('\n\nChecked images:  {}'.format(checked_images))
+    print('Bad images:      {}'.format(bad_images))
+
 
 if __name__ == '__main__':
     orig_dir = os.path.abspath(sys.argv[1])
     check_valid_images(orig_dir)
-    
