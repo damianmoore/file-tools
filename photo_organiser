@@ -119,9 +119,10 @@ def organise_photos(orig, move=False):
                         print 'PATH EXISTS  {} -> {}'.format(filepath, destpath)
                         same = determine_same_file(filepath, destpath)
                         if same:
-                            os.remove(filepath)
-                            were_duplicates += 1
-                            print 'PHOTO ALREADY IMPORTED, DELETED FROM SOURCE'
+                            if move:
+                                os.remove(filepath)
+                                were_duplicates += 1
+                                print 'PHOTO ALREADY IMPORTED, DELETED FROM SOURCE'
                         else:
                             print 'NEED TO IMPORT UNDER DIFFERENT NAME'
                             destpath = find_new_file_name(destpath)
