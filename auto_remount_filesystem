@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+from time import sleep
+
+
+def watch(watch_dir, mount_command, interval=10):
+    while True:
+        if not next(os.walk(watch_dir))[1]:
+            print('Remounting...')
+            os.system(mount_command)
+        sleep(interval)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('watch_dir', help='Path where there should be files/folders if mounted correctly')
+    parser.add_argument('mount_command', help='Command to run if needs to be remounted')
+    parser.add_argument("--interval", help="How many seconds to sleep for in between tests", type=int)
+    args = parser.parse_args()
+
+    print('Watching for files: \'{}\'\nWill run if needed: \'{}\''.format(args.watch_dir, args.mount_command))
+
+    watch(args.watch_dir, args.mount_command, args.interval)
