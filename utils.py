@@ -1,7 +1,7 @@
 from hashlib import md5
 import os
 from subprocess import Popen, PIPE
-from StringIO import StringIO
+from io import BytesIO
 
 from PIL import Image
 
@@ -92,12 +92,12 @@ def determine_same_file(origpath, destpath, fhc=None):
     if os.path.splitext(origpath)[1][1:].lower() in ['jpg', 'jpeg', 'png', ]:
         orig_hash = fhc.get_file_hash(origpath, 'image')
         if not orig_hash:
-            orig_hash = md5(Image.open(StringIO(fhc.get_file(origpath, 'orig'))).tobytes()).hexdigest()
+            orig_hash = md5(Image.open(BytesIO(fhc.get_file(origpath, 'orig'))).tobytes()).hexdigest()
             fhc.set_file_hash(origpath, 'image', orig_hash)
 
         dest_hash = fhc.get_file_hash(destpath, 'image')
         if not dest_hash:
-            dest_hash = md5(Image.open(StringIO(fhc.get_file(destpath, 'dest'))).tobytes()).hexdigest()
+            dest_hash = md5(Image.open(BytesIO(fhc.get_file(destpath, 'dest'))).tobytes()).hexdigest()
             fhc.set_file_hash(destpath, 'image', dest_hash)
 
         if orig_hash == dest_hash:

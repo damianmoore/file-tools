@@ -29,7 +29,7 @@ def get_time(path):
     '''
     cmd = 'exiftool -dateTimeOriginal "%s"' % path
     try:
-        date_str = run_cmd(cmd).split(' : ')[1].strip()
+        date_str = run_cmd(cmd).decode('utf-8').split(' : ')[1].strip()
         return time.strptime(date_str, '%Y:%m:%d %H:%M:%S')
     except (IndexError, ValueError):
         fn = os.path.split(path)[1]
@@ -95,7 +95,7 @@ def organise_photos(orig, move=False):
                 # No filters match this file type
                 pass
             elif os.path.getsize(filepath) < 102400:
-                print 'FILE VERY SMALL (<100k - PROBABLY THUMBNAIL), NOT IMPORTING {}'.format(filepath)
+                print('FILE VERY SMALL (<100k - PROBABLY THUMBNAIL), NOT IMPORTING {}'.format(filepath))
                 were_bad += 1
             else:
                 t = get_time(filepath)
@@ -114,34 +114,37 @@ def organise_photos(orig, move=False):
                         else:
                             shutil.copyfile(filepath, destpath)
                         imported += 1
-                        print 'IMPORTED  {} -> {}'.format(filepath, destpath)
+                        print('IMPORTED  {} -> {}'.format(filepath, destpath))
                     else:
-                        print 'PATH EXISTS  {} -> {}'.format(filepath, destpath)
+                        print('PATH EXISTS  {} -> {}'.format(filepath, destpath))
                         same = determine_same_file(filepath, destpath)
                         if same:
                             if move:
                                 os.remove(filepath)
                                 were_duplicates += 1
-                                print 'PHOTO ALREADY IMPORTED, DELETED FROM SOURCE'
+                                print('PHOTO ALREADY IMPORTED, DELETED FROM SOURCE')
                         else:
-                            print 'NEED TO IMPORT UNDER DIFFERENT NAME'
+                            print('NEED TO IMPORT UNDER DIFFERENT NAME')
+                            #exit(1)
                             destpath = find_new_file_name(destpath)
-                            shutil.move(filepath, destpath)
+                            print(destpath)
+                            #exit(1)
+                            #shutil.move(filepath, destpath)
                             imported += 1
-                            print 'IMPORTED  {} -> {}'.format(filepath, destpath)
+                            print('IMPORTED  {} -> {}'.format(filepath, destpath))
 
                 else:
-                    print 'ERROR READING DATE: {}'.format(filepath)
+                    print('ERROR READING DATE: {}'.format(filepath))
                     were_bad += 1
 
     if imported or were_duplicates:
-        print '\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n{} WERE BAD'.format(imported, were_duplicates, were_bad)
+        print('\n{} PHOTOS IMPORTED\n{} WERE DUPLICATES\n{} WERE BAD'.format(imported, were_duplicates, were_bad))
 
 
 if __name__ == '__main__':
     missing_dependencies = missing_dependencies()
     if missing_dependencies:
-        print 'Missing dependencies: {}'.format(', '.join(missing_dependencies))
+        print('Missing dependencies: {}'.format(', '.join(missing_dependencies)))
         exit(1)
     for path in get_input_paths():
         organise_photos(path, move=True)
