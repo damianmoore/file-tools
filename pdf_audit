@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+import sys
+
+import minecart
+
+
+POINTS_TO_MM = 2.8346456693
+
+
+def check_pdf(filename):
+    pdffile = open(filename, 'rb')
+    doc = minecart.Document(pdffile)
+
+    dimensions_mm = (None, None)
+    seen_shape_colors = []
+    seen_images = []
+
+    page_num = 0
+    while True:
+        page = doc.get_page(page_num)
+        if not page:
+            break
+
+        if page_num == 0:
+            dimensions_mm = (round(page.width / POINTS_TO_MM), round(page.height / POINTS_TO_MM))
+
+        for shape in page.shapes:
+            if shape.fill:
+                color_key = f'{shape.fill.color.space.family.name} {shape.fill.color.value}'
+                if color_key not in seen_shape_colors:
+                    seen_shape_colors.append(color_key)
+            if shape.stroke:
+                color_key = f'{shape.stroke.color.space.family.name} {shape.stroke.color.value}'
+                if color_key not in seen_shape_colors:
+                    seen_shape_colors.append(color_key)
+
+        for image in page.images:
+            try:
+                img = image.as_pil()
+                seen_images.append(f'{img.format} {img.mode} {img.size[0]}x{img.size[1]}')
+            except:
+                seen_images.append('Error reading image')
+
+        page_num += 1
+
+    print('Info:')
+    print(f'    Pages: {page_num}')
+    print(f'    Size: {dimensions_mm[0]}mm x {dimensions_mm[1]}mm')
+    
+    print('Shape colors:')
+    for color in seen_shape_colors:
+        print(f'    {color}')
+
+    print('Images:')
+    for image in seen_images:
+        print(f'    {image}')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print('Please provide file path as argument')
+        exit(1)
+    check_pdf(sys.argv[1])
